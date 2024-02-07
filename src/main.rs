@@ -1,5 +1,6 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
+use colored::{ColoredString, Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -128,12 +129,19 @@ fn add_task(task: impl Into<String>) {
     }
 }
 
+fn colorize_task(task: &Task) -> ColoredString {
+    match task.done {
+        true => task.to_string().dimmed(),
+        false => task.to_string().normal(),
+    }
+}
+
 fn list_tasks(all: bool) {
     let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
     tasks.sort_by_key(|task| task.id);
 
     for task in tasks.iter().filter(|t| !t.done || all) {
-        println!("{task}");
+        println!("{}", colorize_task(task));
     }
 }
 
