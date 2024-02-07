@@ -37,6 +37,9 @@ enum Commands {
 
     #[command(about = "Delete a task")]
     Delete { id: u32 },
+
+    #[command(about = "Swap tasks")]
+    Swap { id1: u32, id2: u32 },
 }
 
 fn main() {
@@ -49,6 +52,7 @@ fn main() {
         Some(Commands::Done { id }) => mark_task(id, true),
         Some(Commands::Undone { id }) => mark_task(id, false),
         Some(Commands::Delete { id }) => delete_task(id),
+        Some(Commands::Swap { id1, id2 }) => swap_tasks(id1, id2),
         None => {}
     }
 }
@@ -158,6 +162,25 @@ fn delete_task(id: u32) {
     };
 
     tasks.remove(index);
+
+    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    }
+}
+
+fn swap_tasks(id1: u32, id2: u32) {
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let Some(index1) = tasks.iter().position(|task| task.id == id1) else {
+        eprintln!("Task 1 not found");
+        return;
+    };
+    let Some(index2) = tasks.iter().position(|task| task.id == id2) else {
+        eprintln!("Task 2 not found");
+        return;
+    };
+
+    tasks[index1].id = id2;
+    tasks[index2].id = id1;
 
     if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
         eprintln!("Could not write to {DEFAULT_FILENAME}")
