@@ -46,6 +46,9 @@ enum Commands {
         #[arg(short, long, help = "Don't prompt for confirmation")]
         force: bool,
     },
+
+    #[command(about = "Get information about your tasks")]
+    Infos,
 }
 
 fn main() {
@@ -60,6 +63,7 @@ fn main() {
         Some(Commands::Delete { id }) => delete_task(id),
         Some(Commands::Swap { id1, id2 }) => swap_tasks(id1, id2),
         Some(Commands::Reset { force }) => reset(force),
+        Some(Commands::Infos) => infos(),
         None => {}
     }
 }
@@ -234,4 +238,15 @@ fn reset(force: bool) {
     if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
         eprintln!("Could not write to {DEFAULT_FILENAME}")
     }
+}
+
+fn infos() {
+    let tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let done = tasks.iter().filter(|task| task.done).count();
+    let remaining = tasks.len() - done;
+
+    println!("File location: {DEFAULT_FILENAME}");
+    println!("Done tasks: {done}");
+    println!("Remaining tasks: {remaining}");
+    println!("Total tasks: {}", tasks.len());
 }
