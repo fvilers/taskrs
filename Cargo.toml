@@ -1,0 +1,11 @@
+[package]
+name = "taskrs"
+version = "0.1.0"
+description = "A simple command line to-do manager"
+repository = "https://github.com/fvilers/taskrs"
+license = "MIT OR Apache-2.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
