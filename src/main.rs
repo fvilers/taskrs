@@ -109,7 +109,7 @@ fn write_tasks<P: AsRef<Path>>(path: P, tasks: Vec<Task>) -> Result<()> {
         .write(true)
         .create(true)
         .truncate(true)
-        .open(&path)?;
+        .open(path)?;
     let writer = BufWriter::new(file);
 
     Ok(serde_json::to_writer(writer, &tasks)?)
