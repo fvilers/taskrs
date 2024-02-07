@@ -25,6 +25,9 @@ enum Commands {
         #[arg(short, long, help = "Include done tasks")]
         all: bool,
     },
+
+    #[command(about = "Update a task")]
+    Update { id: u32, task: String },
 }
 
 fn main() {
@@ -33,6 +36,8 @@ fn main() {
     match cli.command {
         Some(Commands::Add { task }) => add_task(task),
         Some(Commands::List { all }) => list_tasks(all),
+        Some(Commands::Update { id, task }) => update_task(id, task),
+
         None => {}
     }
 }
@@ -103,5 +108,19 @@ fn list_tasks(all: bool) {
 
     for task in tasks.iter().filter(|t| !t.done || all) {
         println!("{task}");
+    }
+}
+
+fn update_task(id: u32, task: impl Into<String>) {
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
+        eprintln!("Task not found");
+        return;
+    };
+
+    current.task = task.into();
+
+    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}")
     }
 }
