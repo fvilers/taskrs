@@ -70,15 +70,15 @@ fn main() {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Task {
+struct TaskItem {
     id: u32,
     task: String,
     done: bool,
 }
 
-impl Task {
-    fn new(id: u32, task: String) -> Self {
-        Task {
+impl TaskItem {
+    const fn new(id: u32, task: String) -> Self {
+        Self {
             id,
             task,
             done: false,
@@ -86,17 +86,14 @@ impl Task {
     }
 }
 
-impl Display for Task {
+impl Display for TaskItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let checkbox = match self.done {
-            true => "🗹",
-            false => "☐",
-        };
+        let checkbox = if self.done { "🗹" } else { "☐" };
         write!(f, "{} {} {}", self.id, checkbox, self.task)
     }
 }
 
-fn read_tasks<P: AsRef<Path>>(path: P) -> Result<Vec<Task>> {
+fn read_tasks<P: AsRef<Path>>(path: P) -> Result<Vec<TaskItem>> {
     let file = File::open(path)?;
     let reader = BufReader::new(file);
     let tasks = serde_json::from_reader(reader)?;
@@ -104,7 +101,7 @@ fn read_tasks<P: AsRef<Path>>(path: P) -> Result<Vec<Task>> {
     Ok(tasks)
 }
 
-fn write_tasks<P: AsRef<Path>>(path: P, tasks: Vec<Task>) -> Result<()> {
+fn write_tasks<P: AsRef<Path>>(path: P, tasks: &[TaskItem]) -> Result<()> {
     let file = OpenOptions::new()
         .write(true)
         .create(true)
@@ -118,26 +115,27 @@ fn write_tasks<P: AsRef<Path>>(path: P, tasks: Vec<Task>) -> Result<()> {
 const DEFAULT_FILENAME: &str = "c:\\Users\\Fabian\\tasks.json";
 
 fn add_task(task: impl Into<String>) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     let max_id = tasks.iter().map(|task| task.id).max().unwrap_or(0);
-    let new_task = Task::new(max_id + 1, task.into());
+    let new_task = TaskItem::new(max_id + 1, task.into());
 
     tasks.push(new_task);
 
-    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}");
     }
 }
 
-fn colorize_task(task: &Task) -> ColoredString {
-    match task.done {
-        true => task.to_string().dimmed(),
-        false => task.to_string().normal(),
+fn colorize_task(task: &TaskItem) -> ColoredString {
+    if task.done {
+        task.to_string().dimmed()
+    } else {
+        task.to_string().normal()
     }
 }
 
 fn list_tasks(all: bool) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     tasks.sort_by_key(|task| task.id);
 
     for task in tasks.iter().filter(|t| !t.done || all) {
@@ -146,7 +144,7 @@ fn list_tasks(all: bool) {
 }
 
 fn update_task(id: u32, task: impl Into<String>) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
         eprintln!("Task not found");
         return;
@@ -154,13 +152,13 @@ fn update_task(id: u32, task: impl Into<String>) {
 
     current.task = task.into();
 
-    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}");
     }
 }
 
 fn mark_task(id: u32, done: bool) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
         eprintln!("Task not found");
         return;
@@ -168,13 +166,13 @@ fn mark_task(id: u32, done: bool) {
 
     current.done = done;
 
-    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}");
     }
 }
 
 fn delete_task(id: u32) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     let Some(index) = tasks.iter().position(|task| task.id == id) else {
         eprintln!("Task not found");
         return;
@@ -182,13 +180,13 @@ fn delete_task(id: u32) {
 
     tasks.remove(index);
 
-    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}");
     }
 }
 
 fn swap_tasks(id1: u32, id2: u32) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     let Some(index1) = tasks.iter().position(|task| task.id == id1) else {
         eprintln!("Task 1 not found");
         return;
@@ -201,8 +199,8 @@ fn swap_tasks(id1: u32, id2: u32) {
     tasks[index1].id = id2;
     tasks[index2].id = id1;
 
-    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}");
     }
 }
 
@@ -217,9 +215,9 @@ fn pluralize(value: usize, singular: &str, plural: &str) -> String {
 }
 
 fn reset(force: bool) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
 
-    if tasks.len() == 0 {
+    if tasks.is_empty() {
         return;
     }
 
@@ -240,16 +238,16 @@ fn reset(force: bool) {
     };
 
     if truncate {
-        tasks.truncate(0)
+        tasks.truncate(0);
     }
 
-    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}");
     }
 }
 
 fn infos() {
-    let tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
     let done = tasks.iter().filter(|task| task.done).count();
     let remaining = tasks.len() - done;
 
