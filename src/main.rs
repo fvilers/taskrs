@@ -28,6 +28,12 @@ enum Commands {
 
     #[command(about = "Update a task")]
     Update { id: u32, task: String },
+
+    #[command(about = "Mark a task as done")]
+    Done { id: u32 },
+
+    #[command(about = "Mark a task as undone")]
+    Undone { id: u32 },
 }
 
 fn main() {
@@ -37,6 +43,8 @@ fn main() {
         Some(Commands::Add { task }) => add_task(task),
         Some(Commands::List { all }) => list_tasks(all),
         Some(Commands::Update { id, task }) => update_task(id, task),
+        Some(Commands::Done { id }) => mark_task(id, true),
+        Some(Commands::Undone { id }) => mark_task(id, false),
 
         None => {}
     }
@@ -119,6 +127,20 @@ fn update_task(id: u32, task: impl Into<String>) {
     };
 
     current.task = task.into();
+
+    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    }
+}
+
+fn mark_task(id: u32, done: bool) {
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
+        eprintln!("Task not found");
+        return;
+    };
+
+    current.done = done;
 
     if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
         eprintln!("Could not write to {DEFAULT_FILENAME}")
