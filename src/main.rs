@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
     fs::{File, OpenOptions},
-    io::{BufReader, BufWriter},
+    io::{self, BufReader, BufWriter},
     path::Path,
 };
 
@@ -40,6 +40,12 @@ enum Commands {
 
     #[command(about = "Swap tasks")]
     Swap { id1: u32, id2: u32 },
+
+    #[command(about = "Empty the task list")]
+    Reset {
+        #[arg(short, long, help = "Don't prompt for confirmation")]
+        force: bool,
+    },
 }
 
 fn main() {
@@ -53,6 +59,7 @@ fn main() {
         Some(Commands::Undone { id }) => mark_task(id, false),
         Some(Commands::Delete { id }) => delete_task(id),
         Some(Commands::Swap { id1, id2 }) => swap_tasks(id1, id2),
+        Some(Commands::Reset { force }) => reset(force),
         None => {}
     }
 }
@@ -181,6 +188,48 @@ fn swap_tasks(id1: u32, id2: u32) {
 
     tasks[index1].id = id2;
     tasks[index2].id = id1;
+
+    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    }
+}
+
+fn pluralize(value: usize, singular: &str, plural: &str) -> String {
+    format!(
+        "{value} {}",
+        match value {
+            0 | 1 => singular,
+            _ => plural,
+        }
+    )
+}
+
+fn reset(force: bool) {
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+
+    if tasks.len() == 0 {
+        return;
+    }
+
+    let truncate = force || {
+        println!(
+            "Are your sure you want to permanently delete {} (y/N)?",
+            pluralize(tasks.len(), "task", "tasks")
+        );
+
+        let mut input = String::new();
+
+        if io::stdin().read_line(&mut input).is_err() {
+            eprintln!("Could not read user input");
+            return;
+        }
+
+        input.to_lowercase().trim() == "y"
+    };
+
+    if truncate {
+        tasks.truncate(0)
+    }
 
     if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
         eprintln!("Could not write to {DEFAULT_FILENAME}")
