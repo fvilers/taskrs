@@ -34,6 +34,9 @@ enum Commands {
 
     #[command(about = "Mark a task as undone")]
     Undone { id: u32 },
+
+    #[command(about = "Delete a task")]
+    Delete { id: u32 },
 }
 
 fn main() {
@@ -45,7 +48,7 @@ fn main() {
         Some(Commands::Update { id, task }) => update_task(id, task),
         Some(Commands::Done { id }) => mark_task(id, true),
         Some(Commands::Undone { id }) => mark_task(id, false),
-
+        Some(Commands::Delete { id }) => delete_task(id),
         None => {}
     }
 }
@@ -141,6 +144,20 @@ fn mark_task(id: u32, done: bool) {
     };
 
     current.done = done;
+
+    if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
+        eprintln!("Could not write to {DEFAULT_FILENAME}")
+    }
+}
+
+fn delete_task(id: u32) {
+    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or(Vec::new());
+    let Some(index) = tasks.iter().position(|task| task.id == id) else {
+        eprintln!("Task not found");
+        return;
+    };
+
+    tasks.remove(index);
 
     if write_tasks(DEFAULT_FILENAME, tasks).is_err() {
         eprintln!("Could not write to {DEFAULT_FILENAME}")
