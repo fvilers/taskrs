@@ -1,12 +1,13 @@
 use anyhow::Result;
 use clap::{Parser, Subcommand};
 use colored::{ColoredString, Colorize};
+use home::home_dir;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
     fs::{File, OpenOptions},
     io::{self, BufReader, BufWriter},
-    path::Path,
+    path::{Path, PathBuf},
 };
 
 #[derive(Parser)]
@@ -112,17 +113,23 @@ fn write_tasks<P: AsRef<Path>>(path: P, tasks: &[TaskItem]) -> Result<()> {
     Ok(serde_json::to_writer(writer, &tasks)?)
 }
 
-const DEFAULT_FILENAME: &str = "c:\\Users\\Fabian\\tasks.json";
+fn task_file_name() -> PathBuf {
+    let mut path = home_dir().expect("Could not determine user's home directory");
+    path.push("tasks.json");
+
+    path
+}
 
 fn add_task(task: impl Into<String>) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let max_id = tasks.iter().map(|task| task.id).max().unwrap_or(0);
     let new_task = TaskItem::new(max_id + 1, task.into());
 
     tasks.push(new_task);
 
-    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}");
+    if write_tasks(&file_name, &tasks).is_err() {
+        eprintln!("Could not write to {}", file_name.display());
     }
 }
 
@@ -135,7 +142,7 @@ fn colorize_task(task: &TaskItem) -> ColoredString {
 }
 
 fn list_tasks(all: bool) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let mut tasks = read_tasks(task_file_name()).unwrap_or_default();
     tasks.sort_by_key(|task| task.id);
 
     for task in tasks.iter().filter(|t| !t.done || all) {
@@ -144,7 +151,8 @@ fn list_tasks(all: bool) {
 }
 
 fn update_task(id: u32, task: impl Into<String>) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
         eprintln!("Task not found");
         return;
@@ -152,13 +160,14 @@ fn update_task(id: u32, task: impl Into<String>) {
 
     current.task = task.into();
 
-    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}");
+    if write_tasks(&file_name, &tasks).is_err() {
+        eprintln!("Could not write to {}", file_name.display());
     }
 }
 
 fn mark_task(id: u32, done: bool) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
         eprintln!("Task not found");
         return;
@@ -166,13 +175,14 @@ fn mark_task(id: u32, done: bool) {
 
     current.done = done;
 
-    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}");
+    if write_tasks(&file_name, &tasks).is_err() {
+        eprintln!("Could not write to {}", file_name.display());
     }
 }
 
 fn delete_task(id: u32) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(index) = tasks.iter().position(|task| task.id == id) else {
         eprintln!("Task not found");
         return;
@@ -180,13 +190,14 @@ fn delete_task(id: u32) {
 
     tasks.remove(index);
 
-    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}");
+    if write_tasks(&file_name, &tasks).is_err() {
+        eprintln!("Could not write to {}", file_name.display());
     }
 }
 
 fn swap_tasks(id1: u32, id2: u32) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(index1) = tasks.iter().position(|task| task.id == id1) else {
         eprintln!("Task 1 not found");
         return;
@@ -199,8 +210,8 @@ fn swap_tasks(id1: u32, id2: u32) {
     tasks[index1].id = id2;
     tasks[index2].id = id1;
 
-    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}");
+    if write_tasks(&file_name, &tasks).is_err() {
+        eprintln!("Could not write to {}", file_name.display());
     }
 }
 
@@ -215,7 +226,8 @@ fn pluralize(value: usize, singular: &str, plural: &str) -> String {
 }
 
 fn reset(force: bool) {
-    let mut tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let mut tasks = read_tasks(&file_name).unwrap_or_default();
 
     if tasks.is_empty() {
         return;
@@ -241,17 +253,18 @@ fn reset(force: bool) {
         tasks.truncate(0);
     }
 
-    if write_tasks(DEFAULT_FILENAME, &tasks).is_err() {
-        eprintln!("Could not write to {DEFAULT_FILENAME}");
+    if write_tasks(&file_name, &tasks).is_err() {
+        eprintln!("Could not write to {}", file_name.display());
     }
 }
 
 fn infos() {
-    let tasks = read_tasks(DEFAULT_FILENAME).unwrap_or_default();
+    let file_name = task_file_name();
+    let tasks = read_tasks(&file_name).unwrap_or_default();
     let done = tasks.iter().filter(|task| task.done).count();
     let remaining = tasks.len() - done;
 
-    println!("File location: {DEFAULT_FILENAME}");
+    println!("File location: {}", file_name.display());
     println!("Done tasks: {done}");
     println!("Remaining tasks: {remaining}");
     println!("Total tasks: {}", tasks.len());
