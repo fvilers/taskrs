@@ -1,6 +1,5 @@
 use anyhow::Result;
 use colored::{ColoredString, Colorize};
-use home::home_dir;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::Display,
@@ -58,15 +57,7 @@ fn write_tasks<P: AsRef<Path>>(path: P, tasks: &[TaskItem]) -> Result<()> {
     Ok(serde_json::to_writer(writer, &tasks)?)
 }
 
-fn task_file_name() -> PathBuf {
-    let mut path = home_dir().expect("Could not determine user's home directory");
-    path.push("tasks.json");
-
-    path
-}
-
-pub fn add_task(task: impl Into<String>) {
-    let file_name = task_file_name();
+pub fn add_task(task: impl Into<String>, file_name: PathBuf) {
     let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let max_id = tasks.iter().map(|task| task.id).max().unwrap_or(0);
     let new_task = TaskItem::new(max_id + 1, task.into());
@@ -86,8 +77,8 @@ fn colorize_task(task: &TaskItem) -> ColoredString {
     }
 }
 
-pub fn list_tasks(all: bool) {
-    let mut tasks = read_tasks(task_file_name()).unwrap_or_default();
+pub fn list_tasks(all: bool, file_name: PathBuf) {
+    let mut tasks = read_tasks(file_name).unwrap_or_default();
     tasks.sort_by_key(|task| task.id);
 
     for task in tasks.iter().filter(|t| !t.done || all) {
@@ -95,8 +86,7 @@ pub fn list_tasks(all: bool) {
     }
 }
 
-pub fn update_task(id: u32, task: impl Into<String>) {
-    let file_name = task_file_name();
+pub fn update_task(id: u32, task: impl Into<String>, file_name: PathBuf) {
     let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
         eprintln!("Task not found");
@@ -110,8 +100,7 @@ pub fn update_task(id: u32, task: impl Into<String>) {
     }
 }
 
-pub fn mark_task(id: u32, done: bool) {
-    let file_name = task_file_name();
+pub fn mark_task(id: u32, done: bool, file_name: PathBuf) {
     let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(current) = tasks.iter_mut().find(|task| task.id == id) else {
         eprintln!("Task not found");
@@ -125,8 +114,7 @@ pub fn mark_task(id: u32, done: bool) {
     }
 }
 
-pub fn delete_task(id: u32) {
-    let file_name = task_file_name();
+pub fn delete_task(id: u32, file_name: PathBuf) {
     let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(index) = tasks.iter().position(|task| task.id == id) else {
         eprintln!("Task not found");
@@ -140,8 +128,7 @@ pub fn delete_task(id: u32) {
     }
 }
 
-pub fn swap_tasks(id1: u32, id2: u32) {
-    let file_name = task_file_name();
+pub fn swap_tasks(id1: u32, id2: u32, file_name: PathBuf) {
     let mut tasks = read_tasks(&file_name).unwrap_or_default();
     let Some(index1) = tasks.iter().position(|task| task.id == id1) else {
         eprintln!("Task 1 not found");
@@ -170,8 +157,7 @@ fn pluralize(value: usize, singular: &str, plural: &str) -> String {
     )
 }
 
-pub fn reset_tasks(force: bool) {
-    let file_name = task_file_name();
+pub fn reset_tasks(force: bool, file_name: PathBuf) {
     let mut tasks = read_tasks(&file_name).unwrap_or_default();
 
     if tasks.is_empty() {
@@ -203,8 +189,7 @@ pub fn reset_tasks(force: bool) {
     }
 }
 
-pub fn infos() {
-    let file_name = task_file_name();
+pub fn infos(file_name: PathBuf) {
     let tasks = read_tasks(&file_name).unwrap_or_default();
     let done = tasks.iter().filter(|task| task.done).count();
     let remaining = tasks.len() - done;
