@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use home::home_dir;
-use taskrs::prelude::*;
+use taskrs::TaskStore;
 
 #[derive(Parser)]
 #[command(about = "A simple command line to-do manager")]
@@ -60,17 +60,18 @@ fn main() {
         .path
         .unwrap_or(home_dir().expect("Could not determine user's home directory"))
         .join("tasks.json");
+    let store = TaskStore::new(file_path);
 
     match cli.command {
-        Some(Commands::Add { task }) => add_task(task, file_path),
-        Some(Commands::List { all }) => list_tasks(all, file_path),
-        Some(Commands::Update { id, task }) => update_task(id, task, file_path),
-        Some(Commands::Done { id }) => mark_task(id, true, file_path),
-        Some(Commands::Undone { id }) => mark_task(id, false, file_path),
-        Some(Commands::Delete { id }) => delete_task(id, file_path),
-        Some(Commands::Swap { id1, id2 }) => swap_tasks(id1, id2, file_path),
-        Some(Commands::Reset { force }) => reset_tasks(force, file_path),
-        Some(Commands::Infos) => infos(file_path),
+        Some(Commands::Add { task }) => store.add_task(task),
+        Some(Commands::List { all }) => store.list_tasks(all),
+        Some(Commands::Update { id, task }) => store.update_task(id, task),
+        Some(Commands::Done { id }) => store.mark_task(id, true),
+        Some(Commands::Undone { id }) => store.mark_task(id, false),
+        Some(Commands::Delete { id }) => store.delete_task(id),
+        Some(Commands::Swap { id1, id2 }) => store.swap_tasks(id1, id2),
+        Some(Commands::Reset { force }) => store.reset_tasks(force),
+        Some(Commands::Infos) => store.infos(),
         None => {}
     }
 }
