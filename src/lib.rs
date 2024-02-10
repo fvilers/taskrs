@@ -37,7 +37,8 @@ pub struct TaskStore {
 }
 
 impl TaskStore {
-    pub fn new(path: PathBuf) -> Self {
+    #[must_use]
+    pub const fn new(path: PathBuf) -> Self {
         Self { path }
     }
 

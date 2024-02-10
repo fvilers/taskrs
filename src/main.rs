@@ -58,7 +58,7 @@ fn main() {
     let cli = Cli::parse();
     let file_path = cli
         .path
-        .unwrap_or(home_dir().expect("Could not determine user's home directory"))
+        .unwrap_or_else(|| home_dir().expect("Could not determine user's home directory"))
         .join("tasks.json");
     let store = TaskStore::new(file_path);
 
