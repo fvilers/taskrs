@@ -1,17 +1,21 @@
 use anyhow::Result;
-use colored::{ColoredString, Colorize};
 use serde::{Deserialize, Serialize};
 use std::{
-    fmt::Display,
     fs::{File, OpenOptions},
     io::{self, BufReader, BufWriter},
     path::{Path, PathBuf},
 };
+use tabled::{settings::Style, Table, Tabled};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Tabled)]
 struct TaskItem {
+    #[tabled(order = 0, rename = "")]
     id: u32,
+
+    #[tabled(order = 2, rename = "")]
     task: String,
+
+    #[tabled(display_with = "as_checkbox", order = 1, rename = "")]
     done: bool,
 }
 
@@ -22,13 +26,6 @@ impl TaskItem {
             task,
             done: false,
         }
-    }
-}
-
-impl Display for TaskItem {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let checkbox = if self.done { "🗹" } else { "☐" };
-        write!(f, "{} {} {}", self.id, checkbox, self.task)
     }
 }
 
@@ -55,12 +52,14 @@ impl TaskStore {
     }
 
     pub fn list_tasks(&self, all: bool) {
-        let mut tasks = read_tasks(&self.path).unwrap_or_default();
+        let tasks = read_tasks(&self.path).unwrap_or_default();
+        let mut tasks: Vec<&TaskItem> = tasks.iter().filter(|task| !task.done || all).collect();
         tasks.sort_by_key(|task| task.id);
 
-        for task in tasks.iter().filter(|t| !t.done || all) {
-            println!("{}", colorize_task(task));
-        }
+        let mut table = Table::new(tasks);
+        table.with(Style::blank());
+
+        println!("{table}");
     }
 
     pub fn update_task(&self, id: u32, task: impl Into<String>) {
@@ -187,12 +186,11 @@ fn write_tasks<P: AsRef<Path>>(path: P, tasks: &[TaskItem]) -> Result<()> {
     Ok(serde_json::to_writer(writer, &tasks)?)
 }
 
-fn colorize_task(task: &TaskItem) -> ColoredString {
-    if task.done {
-        task.to_string().dimmed()
-    } else {
-        task.to_string().normal()
-    }
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn as_checkbox(done: &bool) -> String {
+    let checkbox = if *done { "🗹" } else { "☐" };
+
+    checkbox.to_string()
 }
 
 fn pluralize(value: usize, singular: &str, plural: &str) -> String {
